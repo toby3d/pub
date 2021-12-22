@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"source.toby3d.me/website/micropub/internal/domain"
 	"source.toby3d.me/website/micropub/internal/media"
 )
 
@@ -20,24 +21,24 @@ func NewMemoryMediaRepository(store *sync.Map) media.Repository {
 	}
 }
 
-func (repo *memoryMediaRepository) Create(ctx context.Context, name string, contents []byte) error {
-	repo.store.Store(filepath.Join(DefaultPathPrefix, name), contents)
+func (repo *memoryMediaRepository) Create(ctx context.Context, name string, media *domain.Media) error {
+	repo.store.Store(filepath.Join(DefaultPathPrefix, name), media)
 
 	return nil
 }
 
-func (repo *memoryMediaRepository) Get(ctx context.Context, name string) ([]byte, error) {
+func (repo *memoryMediaRepository) Get(ctx context.Context, name string) (*domain.Media, error) {
 	src, ok := repo.store.Load(filepath.Join(DefaultPathPrefix, name))
 	if !ok {
-		return nil, media.ErrNotFound
+		return nil, media.ErrNotExist
 	}
 
-	contents, ok := src.([]byte)
+	result, ok := src.(*domain.Media)
 	if !ok {
-		return nil, media.ErrNotFound
+		return nil, media.ErrNotExist
 	}
 
-	return contents, nil
+	return result, nil
 }
 
 func (repo *memoryMediaRepository) Delete(ctx context.Context, name string) error {

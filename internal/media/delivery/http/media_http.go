@@ -3,10 +3,11 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"mime"
 	"path"
+	"path/filepath"
 
 	"github.com/fasthttp/router"
-	"github.com/lestrrat-go/jwx/jwa"
 	http "github.com/valyala/fasthttp"
 	"golang.org/x/xerrors"
 
@@ -18,12 +19,14 @@ import (
 
 // RequestHandler represents a handler with business logic for HTTP requests.
 type RequestHandler struct {
+	config  *domain.Config
 	useCase media.UseCase
 }
 
 // New creates a new HTTP delivery handler.
-func New(useCase media.UseCase) *RequestHandler {
+func New(config *domain.Config, useCase media.UseCase) *RequestHandler {
 	return &RequestHandler{
+		config:  config,
 		useCase: useCase,
 	}
 }
@@ -86,7 +89,11 @@ func (h *RequestHandler) Update(ctx *http.RequestCtx) {
 		return
 	}
 
-	fileName, err := h.useCase.Upload(ctx, ff.Filename, buf.Bytes())
+	fileName, err := h.useCase.Upload(ctx, &domain.Media{
+		Name:        ff.Filename,
+		ContentType: mime.TypeByExtension(filepath.Ext(ff.Filename)),
+		Content:     buf.Bytes(),
+	})
 	if err != nil {
 		ctx.SetStatusCode(http.StatusBadRequest)
 		encoder.Encode(&domain.Error{
@@ -99,16 +106,16 @@ func (h *RequestHandler) Update(ctx *http.RequestCtx) {
 	}
 
 	ctx.SetStatusCode(http.StatusCreated)
-	ctx.Response.Header.Set(http.HeaderLocation, path.Join("/", "media", fileName))
+	ctx.Response.Header.Set(http.HeaderLocation, h.config.BaseURL+path.Join("media", fileName))
 	encoder.Encode(struct{}{})
 }
 
 func (h *RequestHandler) Read(ctx *http.RequestCtx) {
-	ctx.SetContentType(common.MIMEApplicationJSON)
 	encoder := json.NewEncoder(ctx)
 
 	fileName, ok := ctx.UserValue("fileName").(string)
 	if !ok {
+		ctx.SetContentType(common.MIMEApplicationJSON)
 		ctx.SetStatusCode(http.StatusBadRequest)
 		encoder.Encode(&domain.Error{
 			Code:        "invalid_request",
@@ -119,8 +126,9 @@ func (h *RequestHandler) Read(ctx *http.RequestCtx) {
 		return
 	}
 
-	contents, err := h.useCase.Download(ctx, fileName)
+	result, err := h.useCase.Download(ctx, fileName)
 	if err != nil {
+		ctx.SetContentType(common.MIMEApplicationJSON)
 		ctx.SetStatusCode(http.StatusBadRequest)
 		encoder.Encode(&domain.Error{
 			Code:        "invalid_request",
@@ -132,6 +140,6 @@ func (h *RequestHandler) Read(ctx *http.RequestCtx) {
 	}
 
 	ctx.SetStatusCode(http.StatusOK)
-	ctx.SetContentType(common.MIMEApplicationOctetStream)
-	ctx.SetBody(contents)
+	ctx.SetContentType(result.ContentType)
+	ctx.SetBody(result.Content)
 }

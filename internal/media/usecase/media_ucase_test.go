@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"source.toby3d.me/website/micropub/internal/domain"
 	repository "source.toby3d.me/website/micropub/internal/media/repository/memory"
 	"source.toby3d.me/website/micropub/internal/media/usecase"
 )
@@ -17,10 +19,10 @@ import (
 func TestUpload(t *testing.T) {
 	t.Parallel()
 
-	_, contents := testFile(t)
+	media := domain.TestMedia(t)
 
 	result, err := usecase.NewMediaUseCase(repository.NewMemoryMediaRepository(new(sync.Map))).
-		Upload(context.Background(), "sunset.jpg", contents)
+		Upload(context.Background(), media)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, result)
 }
@@ -28,26 +30,18 @@ func TestUpload(t *testing.T) {
 func TestDownload(t *testing.T) {
 	t.Parallel()
 
-	fileName, contents := testFile(t)
-
-	repo := repository.NewMemoryMediaRepository(new(sync.Map))
-	require.NoError(t, repo.Create(context.Background(), fileName, contents))
-
-	result, err := usecase.NewMediaUseCase(repo).Download(context.Background(), fileName)
-	assert.NoError(t, err)
-	assert.Equal(t, result, contents)
-}
-
-func testFile(tb testing.TB) (string, []byte) {
-	tb.Helper()
+	media := domain.TestMedia(t)
 
 	fileName := make([]byte, usecase.DefaultNameLength)
 	_, err := rand.Read(fileName)
-	require.NoError(tb, err)
+	require.NoError(t, err)
 
-	contents := make([]byte, 128)
-	_, err = rand.Read(contents)
-	require.NoError(tb, err)
+	newName := base64.RawURLEncoding.EncodeToString(fileName) + filepath.Ext(media.Name)
 
-	return base64.RawURLEncoding.EncodeToString(fileName) + ".jpg", contents
+	repo := repository.NewMemoryMediaRepository(new(sync.Map))
+	require.NoError(t, repo.Create(context.Background(), newName, media))
+
+	result, err := usecase.NewMediaUseCase(repo).Download(context.Background(), newName)
+	assert.NoError(t, err)
+	assert.Equal(t, result, media)
 }

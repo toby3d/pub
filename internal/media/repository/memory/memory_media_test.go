@@ -2,7 +2,6 @@ package memory_test
 
 import (
 	"context"
-	"crypto/rand"
 	"path"
 	"sync"
 	"testing"
@@ -10,57 +9,48 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"source.toby3d.me/website/micropub/internal/domain"
 	repository "source.toby3d.me/website/micropub/internal/media/repository/memory"
 )
 
 func TestCreate(t *testing.T) {
 	t.Parallel()
 
-	fileName, contents := testFile(t)
+	media := domain.TestMedia(t)
+
 	store := new(sync.Map)
-
 	require.NoError(t, repository.NewMemoryMediaRepository(store).
-		Create(context.Background(), fileName, contents))
+		Create(context.Background(), "sample.ext", media))
 
-	result, ok := store.Load(path.Join(repository.DefaultPathPrefix, fileName))
+	result, ok := store.Load(path.Join(repository.DefaultPathPrefix, "sample.ext"))
 	assert.True(t, ok)
-	assert.Equal(t, result, contents)
+	assert.Equal(t, media, result)
 }
 
 func TestGet(t *testing.T) {
 	t.Parallel()
 
-	fileName, contents := testFile(t)
+	media := domain.TestMedia(t)
+
 	store := new(sync.Map)
+	store.Store(path.Join(repository.DefaultPathPrefix, "sample.ext"), media)
 
-	store.Store(path.Join(repository.DefaultPathPrefix, fileName), contents)
-
-	result, err := repository.NewMemoryMediaRepository(store).Get(context.Background(), fileName)
+	result, err := repository.NewMemoryMediaRepository(store).Get(context.Background(), "sample.ext")
 	assert.NoError(t, err)
-	assert.Equal(t, result, contents)
+	assert.Equal(t, media, result)
 }
 
 func TestDelete(t *testing.T) {
 	t.Parallel()
 
-	fileName, contents := testFile(t)
+	media := domain.TestMedia(t)
+
 	store := new(sync.Map)
+	store.Store(path.Join(repository.DefaultPathPrefix, "sample.ext"), media)
 
-	store.Store(path.Join(repository.DefaultPathPrefix, fileName), contents)
+	require.NoError(t, repository.NewMemoryMediaRepository(store).Delete(context.Background(), "sample.ext"))
 
-	require.NoError(t, repository.NewMemoryMediaRepository(store).Delete(context.Background(), fileName))
-
-	result, ok := store.Load(path.Join(repository.DefaultPathPrefix, fileName))
+	result, ok := store.Load(path.Join(repository.DefaultPathPrefix, "sample.ext"))
 	assert.False(t, ok)
 	assert.Nil(t, result)
-}
-
-func testFile(tb testing.TB) (string, []byte) {
-	tb.Helper()
-
-	contents := make([]byte, 128)
-	_, err := rand.Read(contents)
-	require.NoError(tb, err)
-
-	return "sunset.jpg", contents
 }

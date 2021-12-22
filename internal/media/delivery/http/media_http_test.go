@@ -2,10 +2,9 @@ package http_test
 
 import (
 	"bytes"
-	"context"
-	"crypto/rand"
-	"encoding/base64"
+	"embed"
 	"mime/multipart"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -14,35 +13,82 @@ import (
 	"github.com/stretchr/testify/require"
 	http "github.com/valyala/fasthttp"
 
+	"source.toby3d.me/website/micropub/internal/domain"
 	delivery "source.toby3d.me/website/micropub/internal/media/delivery/http"
 	repository "source.toby3d.me/website/micropub/internal/media/repository/memory"
 	"source.toby3d.me/website/micropub/internal/media/usecase"
 	"source.toby3d.me/website/micropub/internal/testing/httptest"
 )
 
-const testFileName string = "sunset.jpg"
+type TestCase struct {
+	name           string
+	fileName       string
+	expContentType string
+}
+
+//go:embed testdata/*
+var testData embed.FS
 
 func TestUpload(t *testing.T) {
 	t.Parallel()
 
-	_, contents := testFile(t)
-	buf := bytes.NewBuffer(nil)
-	w := multipart.NewWriter(buf)
-
-	ff, err := w.CreateFormFile("file", testFileName)
-	require.NoError(t, err)
-
-	_, err = ff.Write(contents)
-	require.NoError(t, err)
-
-	require.NoError(t, w.Close())
-
+	cfg := domain.TestConfig(t)
 	r := router.New()
-	r.POST("/media", delivery.New(usecase.NewMediaUseCase(repository.NewMemoryMediaRepository(new(sync.Map)))).
-		Update)
+	delivery.New(cfg, usecase.NewMediaUseCase(repository.NewMemoryMediaRepository(new(sync.Map)))).Register(r)
 
 	client, _, cleanup := httptest.New(t, r.Handler)
 	t.Cleanup(cleanup)
+
+	for _, testCase := range []TestCase{
+		{
+			name:           "jpg",
+			fileName:       "sunset.jpg",
+			expContentType: "image/jpeg",
+		}, {
+			name:           "png",
+			fileName:       "micropub-rocks.png",
+			expContentType: "image/png",
+		}, {
+			name:           "gif",
+			fileName:       "w3c-socialwg.gif",
+			expContentType: "image/gif",
+		},
+	} {
+		testCase := testCase
+
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			upResp := upload(t, client, testCase.fileName)
+			defer http.ReleaseResponse(upResp)
+
+			assert.Equal(t, upResp.StatusCode(), http.StatusCreated, "returned HTTP 201")
+			assert.NotNil(t, upResp.Header.Peek(http.HeaderLocation), "returned a Location header")
+
+			downResp := download(t, client, upResp.Header.Peek(http.HeaderLocation))
+			assert.Equal(t, http.StatusOK, downResp.StatusCode(), "the URL exists")
+			assert.Equal(t, testCase.expContentType, string(downResp.Header.ContentType()),
+				"has the expected content type")
+		})
+	}
+}
+
+func upload(tb testing.TB, client *http.Client, fileName string) *http.Response {
+	tb.Helper()
+
+	contents, err := testData.ReadFile(filepath.Join("testdata", fileName))
+	require.NoError(tb, err)
+
+	// NOTE(toby3d): upload
+	buf := bytes.NewBuffer(nil)
+	w := multipart.NewWriter(buf)
+
+	ff, err := w.CreateFormFile("file", fileName)
+	require.NoError(tb, err)
+
+	_, err = ff.Write(contents)
+	require.NoError(tb, err)
+	require.NoError(tb, w.Close())
 
 	req := http.AcquireRequest()
 	defer http.ReleaseRequest(req)
@@ -52,43 +98,21 @@ func TestUpload(t *testing.T) {
 	req.SetBody(buf.Bytes())
 
 	resp := http.AcquireResponse()
-	defer http.ReleaseResponse(resp)
+	require.NoError(tb, client.Do(req, resp))
 
-	require.NoError(t, client.Do(req, resp))
-	assert.Equal(t, resp.StatusCode(), http.StatusCreated)
-	require.NotNil(t, resp.Header.Peek(http.HeaderLocation))
+	return resp
 }
 
-func TestDownload(t *testing.T) {
-	t.Parallel()
-
-	fileName, contents := testFile(t)
-
-	repo := repository.NewMemoryMediaRepository(new(sync.Map))
-	require.NoError(t, repo.Create(context.Background(), fileName, contents))
-
-	r := router.New()
-	r.GET("/media/{fileName:*}", delivery.New(usecase.NewMediaUseCase(repo)).Read)
-
-	client, _, cleanup := httptest.New(t, r.Handler)
-	t.Cleanup(cleanup)
-
-	status, body, err := client.Get(nil, "https://example.com/media/"+fileName)
-	assert.NoError(t, err)
-	assert.Equal(t, status, http.StatusOK)
-	assert.Equal(t, contents, body)
-}
-
-func testFile(tb testing.TB) (string, []byte) {
+func download(tb testing.TB, client *http.Client, location []byte) *http.Response {
 	tb.Helper()
 
-	fileName := make([]byte, usecase.DefaultNameLength)
-	_, err := rand.Read(fileName)
-	require.NoError(tb, err)
+	req := http.AcquireRequest()
+	defer http.ReleaseRequest(req)
+	req.Header.SetMethod(http.MethodGet)
+	req.SetRequestURIBytes(location)
 
-	contents := make([]byte, 128)
-	_, err = rand.Read(contents)
-	require.NoError(tb, err)
+	resp := http.AcquireResponse()
+	require.NoError(tb, client.Do(req, resp))
 
-	return base64.RawURLEncoding.EncodeToString(fileName) + ".jpg", contents
+	return resp
 }
