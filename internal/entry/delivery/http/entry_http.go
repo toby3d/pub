@@ -3,7 +3,10 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/url"
@@ -15,9 +18,16 @@ import (
 
 	"source.toby3d.me/toby3d/pub/internal/common"
 	"source.toby3d.me/toby3d/pub/internal/domain"
+	"source.toby3d.me/toby3d/pub/internal/entry"
+	"source.toby3d.me/toby3d/pub/internal/media"
 )
 
 type (
+	Handler struct {
+		entries entry.UseCase
+		media   media.UseCase
+	}
+
 	Request struct {
 		Action string `json:"action"`
 	}
@@ -116,6 +126,10 @@ type (
 		time.Time `json:"-"`
 	}
 
+	Action struct {
+		Value domain.Action `json:"-"`
+	}
+
 	bufferHTML struct {
 		HTML string `json:"html,omitempty"`
 	}
@@ -127,6 +141,280 @@ type (
 )
 
 const MaxBodySize int64 = 100 * 1024 * 1024 // 100mb
+
+func NewHandler(entries entry.UseCase, media media.UseCase) *Handler {
+	return &Handler{
+		entries: entries,
+		media:   media,
+	}
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	default:
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	case "", http.MethodGet:
+		h.handleSource(w, r)
+	case http.MethodPost:
+		mediaType, _, err := mime.ParseMediaType(r.Header.Get(common.HeaderContentType))
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
+			return
+		}
+
+		switch mediaType {
+		default:
+			http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
+		case common.MIMEApplicationJSON:
+			buf := bytes.NewBuffer(nil)
+			if _, err := buf.ReadFrom(r.Body); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+
+				return
+			}
+
+			req := new(Request)
+			_ = json.NewDecoder(bytes.NewReader(buf.Bytes())).Decode(req)
+			r.Body = io.NopCloser(buf)
+
+			switch req.Action {
+			default:
+				h.handleCreate(w, r)
+			case domain.ActionUpdate.String():
+				h.handleUpdate(w, r)
+			case domain.ActionDelete.String():
+				h.handleDelete(w, r)
+			case domain.ActionUndelete.String():
+				h.handleUndelete(w, r)
+			}
+		case common.MIMEApplicationForm:
+			switch strings.ToLower(r.FormValue("action")) {
+			default:
+				h.handleCreate(w, r)
+			case domain.ActionDelete.String():
+				h.handleDelete(w, r)
+			case domain.ActionUndelete.String():
+				h.handleUndelete(w, r)
+			}
+		case common.MIMEMultipartForm:
+			h.handleCreate(w, r)
+		}
+	}
+}
+
+func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	req := NewRequestCreate()
+	if err := req.bind(r); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	if r.MultipartForm != nil {
+		for k, dst := range map[string]*[]Figure{
+			"photo": &req.Properties.Photo,
+			"video": &req.Properties.Video,
+			"audio": &req.Properties.Audio,
+		} {
+			file, head, err := r.FormFile(k)
+			if err != nil {
+				if errors.Is(err, http.ErrMissingFile) {
+					continue
+				}
+
+				http.Error(w, err.Error(), http.StatusBadRequest)
+
+				return
+			}
+			defer file.Close()
+
+			content, err := ioutil.ReadAll(file)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+
+				return
+			}
+
+			location, err := h.media.Upload(r.Context(), domain.File{
+				Path:    head.Filename,
+				Content: content,
+			})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+
+				return
+			}
+
+			*dst = append(*dst, Figure{Value: location, Alt: ""})
+		}
+	}
+
+	in := new(domain.Entry)
+	req.populate(in)
+
+	out, err := h.entries.Create(r.Context(), *in)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set(common.HeaderLocation, out["self"].String())
+
+	if len(out)-1 <= 0 {
+		w.WriteHeader(http.StatusCreated)
+
+		return
+	}
+
+	links := make([]string, 0)
+	for rel, value := range out {
+		links = append(links, `<`+value.String()+`>; rel="`+rel+`"`)
+	}
+
+	w.Header().Set(common.HeaderLink, strings.Join(links, ", "))
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *Handler) handleSource(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "" && r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	req := new(RequestSource)
+	if err := req.bind(r); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	out, err := h.entries.Source(r.Context(), req.URL.URL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set(common.HeaderContentType, common.MIMEApplicationJSONCharsetUTF8)
+	if err = json.NewEncoder(w).Encode(NewResponseSource(out, req.Properties...)); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	req := new(RequestUpdate)
+	if err := req.bind(r); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		println(err.Error())
+
+		return
+	}
+
+	in, err := h.entries.Source(r.Context(), req.URL.URL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	req.populate(in)
+
+	out, err := h.entries.Update(r.Context(), req.URL.URL, *in)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	if out.URL.RequestURI() == req.URL.RequestURI() {
+		w.Header().Set(common.HeaderContentType, common.MIMEApplicationJSONCharsetUTF8)
+		if err = json.NewEncoder(w).Encode(NewResponseSource(out)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+
+		return
+	}
+
+	w.Header().Set(common.HeaderLocation, out.URL.String())
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	req := new(RequestDelete)
+	if err := req.bind(r); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	if _, err := h.entries.Delete(r.Context(), req.URL.URL); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set(common.HeaderContentType, common.MIMETextPlainCharsetUTF8)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) handleUndelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	req := new(RequestUndelete)
+	if err := req.bind(r); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+
+		return
+	}
+
+	out, err := h.entries.Undelete(r.Context(), req.URL.URL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	if out.URL.RequestURI() == req.URL.RequestURI() {
+		w.Header().Set(common.HeaderContentType, common.MIMEApplicationJSONCharsetUTF8)
+		if err = json.NewEncoder(w).Encode(NewResponseSource(out)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+
+		return
+	}
+
+	w.Header().Set(common.HeaderLocation, out.URL.String())
+	w.WriteHeader(http.StatusCreated)
+}
 
 func NewRequestCreate() *RequestCreate {
 	return &RequestCreate{
@@ -666,4 +954,28 @@ func (dt DateTime) MarshalJSON() ([]byte, error) {
 	}
 
 	return []byte(strconv.Quote(dt.Format(time.RFC3339))), nil
+}
+
+func (a *Action) UnmarshalJSON(b []byte) error {
+	v, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+
+	out, err := domain.ParseAction(strings.TrimSpace(strings.ToLower(v)))
+	if err != nil {
+		return err
+	}
+
+	a.Value = out
+
+	return nil
+}
+
+func (a Action) MarshalJSON() ([]byte, error) {
+	if a.Value == domain.ActionUnd {
+		return []byte(`""`), nil
+	}
+
+	return []byte(strconv.Quote(a.Value.String())), nil
 }

@@ -7,6 +7,7 @@ const (
 	HeaderContentType         string = "Content-Type"
 	HeaderLocation            string = "Location"
 	HeaderXContentTypeOptions string = "X-Content-Type-Options"
+	HeaderLink                string = "Link"
 )
 
 const (
