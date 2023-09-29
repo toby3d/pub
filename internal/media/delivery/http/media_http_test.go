@@ -37,7 +37,7 @@ func TestHandler_Upload(t *testing.T) {
 
 	expect := testConfig.HTTP.BaseURL().JoinPath("media", "abc123"+testFile.Ext())
 
-	req := httptest.NewRequest(http.MethodPost, "https://example.com/media", buf)
+	req := httptest.NewRequest(http.MethodPost, "https://media.example.com", buf)
 	req.Header.Set(common.HeaderContentType, form.FormDataContentType())
 
 	w := httptest.NewRecorder()
@@ -62,7 +62,7 @@ func TestHandler_Download(t *testing.T) {
 	testConfig := domain.TestConfig(t)
 	testFile := domain.TestFile(t)
 
-	req := httptest.NewRequest(http.MethodGet, "https://example.com/media/"+testFile.LogicalName(), nil)
+	req := httptest.NewRequest(http.MethodGet, "https://media.example.com/"+testFile.LogicalName(), nil)
 	w := httptest.NewRecorder()
 
 	delivery.NewHandler(
