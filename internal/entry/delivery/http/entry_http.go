@@ -127,7 +127,7 @@ type (
 	}
 
 	Action struct {
-		Value domain.Action `json:"-"`
+		domain.Action `json:"-"`
 	}
 
 	bufferHTML struct {
@@ -961,15 +961,15 @@ func (a *Action) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	a.Value = out
+	a.Action = out
 
 	return nil
 }
 
 func (a Action) MarshalJSON() ([]byte, error) {
-	if a.Value == domain.ActionUnd {
+	if a.Action == domain.ActionUnd {
 		return []byte(`""`), nil
 	}
 
-	return []byte(strconv.Quote(a.Value.String())), nil
+	return []byte(strconv.Quote(a.Action.String())), nil
 }
