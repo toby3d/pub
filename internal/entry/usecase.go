@@ -28,27 +28,55 @@ type (
 		Source(ctx context.Context, u *url.URL) (*domain.Entry, error)
 	}
 
-	stubUseCase struct{}
+	dummyUseCase struct{}
+
+	stubUseCase struct {
+		entry *domain.Entry
+		err   error
+		ok    bool
+	}
 )
 
-func NewStubUseCase() *stubUseCase {
-	return &stubUseCase{}
+func NewDummyUseCase() *dummyUseCase {
+	return &dummyUseCase{}
+}
+
+func (dummyUseCase) Create(ctx context.Context, e domain.Entry) (map[string]*url.URL, error) {
+	return nil, nil
+}
+
+func (dummyUseCase) Update(ctx context.Context, u *url.URL, e domain.Entry) (*domain.Entry, error) {
+	return nil, nil
+}
+
+func (dummyUseCase) Delete(ctx context.Context, u *url.URL) (bool, error)            { return false, nil }
+func (dummyUseCase) Undelete(ctx context.Context, u *url.URL) (*domain.Entry, error) { return nil, nil }
+func (dummyUseCase) Source(ctx context.Context, u *url.URL) (*domain.Entry, error)   { return nil, nil }
+
+func NewStubUseCase(err error, e *domain.Entry, ok bool) *stubUseCase {
+	return &stubUseCase{
+		entry: e,
+		err:   err,
+		ok:    ok,
+	}
 }
 
 func (ucase *stubUseCase) Create(ctx context.Context, e domain.Entry) (map[string]*url.URL, error) {
-	return nil, nil
+	return map[string]*url.URL{"self": ucase.entry.URL}, ucase.err
 }
 
 func (ucase *stubUseCase) Update(ctx context.Context, u *url.URL, e domain.Entry) (*domain.Entry, error) {
-	return nil, nil
+	return ucase.entry, ucase.err
 }
 
-func (ucase *stubUseCase) Delete(ctx context.Context, u *url.URL) (bool, error) { return false, nil }
+func (ucase *stubUseCase) Delete(ctx context.Context, u *url.URL) (bool, error) {
+	return ucase.ok, ucase.err
+}
 
 func (ucase *stubUseCase) Undelete(ctx context.Context, u *url.URL) (*domain.Entry, error) {
-	return nil, nil
+	return ucase.entry, ucase.err
 }
 
 func (ucase *stubUseCase) Source(ctx context.Context, u *url.URL) (*domain.Entry, error) {
-	return nil, nil
+	return ucase.entry, ucase.err
 }
