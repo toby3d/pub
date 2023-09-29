@@ -35,7 +35,7 @@ func (dummyUseCase) Upload(_ context.Context, _ domain.File) (*url.URL, error)  
 func (dummyUseCase) Download(_ context.Context, _ string) (*domain.File, error) { return nil, nil }
 
 // NewDummyUseCase creates a stub use case what always returns provided input.
-func NewStubUseCase(u *url.URL, f *domain.File, err error) UseCase {
+func NewStubUseCase(err error, f *domain.File, u *url.URL) UseCase {
 	return &stubUseCase{
 		u:   u,
 		f:   f,

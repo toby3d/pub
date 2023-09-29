@@ -41,7 +41,7 @@ func TestUpload(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	delivery.NewHandler(
-		media.NewStubUseCase(expect, testFile, nil), *testConfig).
+		media.NewStubUseCase(nil, testFile, expect), *testConfig).
 		ServeHTTP(w, req)
 
 	resp := w.Result()
