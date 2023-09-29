@@ -2,6 +2,9 @@ package http_test
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -9,13 +12,99 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/net/html"
 
+	"source.toby3d.me/toby3d/pub/internal/common"
+	"source.toby3d.me/toby3d/pub/internal/domain"
+	"source.toby3d.me/toby3d/pub/internal/entry"
 	delivery "source.toby3d.me/toby3d/pub/internal/entry/delivery/http"
+	"source.toby3d.me/toby3d/pub/internal/media"
 )
 
 type testRequest struct {
 	Delete  *delivery.Delete   `json:"delete,omitempty"`
 	Content []delivery.Content `json:"content,omitempty"`
 	Photo   []*delivery.Figure `json:"photo,omitempty"`
+}
+
+func TestHandler_Create(t *testing.T) {
+	t.Parallel()
+
+	t.Run("form", func(t *testing.T) {
+		t.Parallel()
+
+		for name, input := range map[string]url.Values{
+			"simple": {
+				"h":       []string{"entry"},
+				"content": []string{"Micropub test of creating a basic h-entry"},
+			},
+			"categories": {
+				"h": []string{"entry"},
+				"content": []string{"Micropub test of creating an h-entry with categories. " +
+					"This post should have two categories, test1 and test2"},
+				"category[]": []string{"test1", "test2"},
+			},
+			"category": {
+				"h": []string{"entry"},
+				"content": []string{"Micropub test of creating an h-entry with one category. " +
+					"This post should have one category, test1"},
+				"category": []string{"test1"},
+			},
+		} {
+			name, input := name, input
+
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
+				doCreateRequest(t, strings.NewReader(input.Encode()),
+					common.MIMEApplicationFormCharsetUTF8)
+			})
+		}
+	})
+
+	t.Run("json", func(t *testing.T) {
+		t.Parallel()
+
+		for name, input := range map[string]string{
+			"simple":     `{"type": ["h-entry"], "properties": {"content": ["Micropub test of creating an h-entry with a JSON request"]}}`,
+			"categories": `{"type": ["h-entry"], "properties": {"content": ["Micropub test of creating an h-entry with a JSON request containing multiple categories. This post should have two categories, test1 and test2."], "category": ["test1", "test2"]}}`,
+			"html":       `{"type": ["h-entry"], "properties": {"content": [{"html": "<p>This post has <b>bold</b> and <i>italic</i> text.</p>"}]}}`,
+			"photo":      `{"type": ["h-entry"], "properties": {"content": ["Micropub test of creating a photo referenced by URL. This post should include a photo of a sunset."], "photo": ["https://micropub.rocks/media/sunset.jpg"]}}`,
+			"object":     `{"type": ["h-entry"], "properties": {"published": ["2017-05-31T12:03:36-07:00"], "content": ["Lunch meeting"], "checkin": [{"type": ["h-card"], "properties": {"name": ["Los Gorditos"], "url": ["https://foursquare.com/v/502c4bbde4b06e61e06d1ebf"], "latitude": [45.524330801154], "longitude": [-122.68068808051], "street-address": ["922 NW Davis St"], "locality": ["Portland"], "region": ["OR"], "country-name": ["United States"], "postal-code": ["97209"]}}]}}`,
+			"photo-alt":  `{"type": ["h-entry"], "properties": {"content": ["Micropub test of creating a photo referenced by URL with alt text. This post should include a photo of a sunset."], "photo": [{"value": "https://micropub.rocks/media/sunset.jpg", "alt": "Photo of a sunset"}]}}`,
+			"photos":     `{"type": ["h-entry"], "properties": {"content": ["Micropub test of creating multiple photos referenced by URL. This post should include a photo of a city at night."], "photo": ["https://micropub.rocks/media/sunset.jpg", "https://micropub.rocks/media/city-at-night.jpg"]}}`,
+		} {
+			name, input := name, input
+
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
+				doCreateRequest(t, strings.NewReader(input), common.MIMEApplicationJSONCharsetUTF8)
+			})
+		}
+	})
+
+	// TODO(toby3d): multipart requests
+}
+
+func doCreateRequest(tb testing.TB, r io.Reader, contentType string) {
+	tb.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "https://example.com/", r)
+	req.Header.Set(common.HeaderContentType, contentType)
+
+	w := httptest.NewRecorder()
+	delivery.NewHandler(entry.NewStubUseCase(nil, domain.TestEntry(tb), true),
+		media.NewDummyUseCase()).ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusAccepted {
+		tb.Errorf("%s %s = %d, expect %d or %d", req.Method, req.RequestURI, resp.StatusCode,
+			http.StatusCreated, http.StatusAccepted)
+	}
+
+	if location := resp.Header.Get(common.HeaderLocation); location == "" {
+		tb.Errorf("%s %s = returns empty Location header, want non-empty", req.Method, req.RequestURI)
+	}
 }
 
 func TestRequest(t *testing.T) {
