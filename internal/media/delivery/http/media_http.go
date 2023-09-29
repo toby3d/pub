@@ -1,10 +1,12 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"mime"
 	"net/http"
+	"time"
 
 	"source.toby3d.me/toby3d/pub/internal/common"
 	"source.toby3d.me/toby3d/pub/internal/domain"
@@ -31,21 +33,44 @@ func NewHandler(media media.UseCase, config domain.Config) *Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	default:
+		WriteError(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	case "", http.MethodGet:
+		h.handleDownload(w, r)
+	case http.MethodPost:
+		h.handleUpload(w, r)
+	}
+}
+
+func (h *Handler) handleDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "" && r.Method != http.MethodGet {
+		WriteError(w, "method MUST be "+http.MethodGet, http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	out, err := h.media.Download(r.Context(), r.RequestURI)
+	if err != nil {
+		WriteError(w, "cannot download media: "+err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	http.ServeContent(w, r, out.LogicalName(), time.Time{}, bytes.NewReader(out.Content))
+}
+
+func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		WriteError(w, "method MUST be "+http.MethodPost, http.StatusBadRequest)
+		WriteError(w, "method MUST be "+http.MethodPost, http.StatusMethodNotAllowed)
 
 		return
 	}
 
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get(common.HeaderContentType))
-	if err != nil {
-		WriteError(w, "Content-Type header MUST be "+common.MIMEMultipartForm, http.StatusBadRequest)
-
-		return
-	}
-
-	if mediaType != common.MIMEMultipartForm {
-		WriteError(w, "Content-Type header MUST be "+common.MIMEMultipartForm, http.StatusBadRequest)
+	if err != nil || mediaType != common.MIMEMultipartForm {
+		WriteError(w, common.HeaderContentType+" header MUST be "+common.MIMEMultipartForm,
+			http.StatusBadRequest)
 
 		return
 	}
