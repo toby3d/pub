@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/url"
@@ -235,7 +234,7 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 			}
 			defer file.Close()
 
-			content, err := ioutil.ReadAll(file)
+			content, err := io.ReadAll(file)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
