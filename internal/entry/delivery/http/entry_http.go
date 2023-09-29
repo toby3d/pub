@@ -266,17 +266,11 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set(common.HeaderLocation, out["self"].String())
-
-	if len(out)-1 <= 0 {
-		w.WriteHeader(http.StatusCreated)
-
-		return
-	}
+	w.Header().Set(common.HeaderLocation, out.URL.String())
 
 	links := make([]string, 0)
-	for rel, value := range out {
-		links = append(links, `<`+value.String()+`>; rel="`+rel+`"`)
+	for i := range out.Syndications {
+		links = append(links, `<`+out.Syndications[i].String()+`>; rel="syndication"`)
 	}
 
 	w.Header().Set(common.HeaderLink, strings.Join(links, ", "))

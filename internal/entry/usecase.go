@@ -11,7 +11,7 @@ type (
 	UseCase interface {
 		// Create creates a new entry. Returns map or rel links, like Permalink
 		// or created post, shortcode and syndication.
-		Create(ctx context.Context, e domain.Entry) (map[string]*url.URL, error)
+		Create(ctx context.Context, e domain.Entry) (*domain.Entry, error)
 
 		// Update updates exist entry properties on provided u.
 		//
@@ -61,8 +61,8 @@ func NewStubUseCase(err error, e *domain.Entry, ok bool) *stubUseCase {
 	}
 }
 
-func (ucase *stubUseCase) Create(ctx context.Context, e domain.Entry) (map[string]*url.URL, error) {
-	return map[string]*url.URL{"self": ucase.entry.URL}, ucase.err
+func (ucase *stubUseCase) Create(ctx context.Context, e domain.Entry) (*domain.Entry, error) {
+	return ucase.entry, ucase.err
 }
 
 func (ucase *stubUseCase) Update(ctx context.Context, u *url.URL, e domain.Entry) (*domain.Entry, error) {
