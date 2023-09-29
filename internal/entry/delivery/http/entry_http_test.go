@@ -9,19 +9,19 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/net/html"
 
-	"source.toby3d.me/toby3d/pub/internal/entry/delivery/http"
+	delivery "source.toby3d.me/toby3d/pub/internal/entry/delivery/http"
 )
 
 type testRequest struct {
-	Delete  *http.Delete   `json:"delete,omitempty"`
-	Content []http.Content `json:"content,omitempty"`
-	Photo   []*http.Figure `json:"photo,omitempty"`
+	Delete  *delivery.Delete   `json:"delete,omitempty"`
+	Content []delivery.Content `json:"content,omitempty"`
+	Photo   []*delivery.Figure `json:"photo,omitempty"`
 }
 
 func TestRequest(t *testing.T) {
 	t.Parallel()
 
-	req := new(http.Request)
+	req := new(delivery.Request)
 	if err := json.NewDecoder(strings.NewReader(`{
 		  "action": "update",
 		  "url": "http://example.com/",
@@ -48,18 +48,18 @@ func TestContent_UnmarshalJSON(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		in   string
-		out  http.Content
+		out  delivery.Content
 	}{{
 		name: "plain",
 		in:   `"Hello World"`,
-		out: http.Content{
+		out: delivery.Content{
 			HTML:  nil,
 			Value: "Hello World",
 		},
 	}, {
 		name: "html",
 		in:   `{"html":"<b>Hello</b> <i>World</i>"}`,
-		out: http.Content{
+		out: delivery.Content{
 			HTML:  testContent,
 			Value: "",
 		},
@@ -74,7 +74,7 @@ func TestContent_UnmarshalJSON(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if out == nil || len(out.Content) == 0 {
+			if len(out.Content) == 0 {
 				t.Error("empty content result, want not nil")
 
 				return
@@ -96,26 +96,26 @@ func TestContent_MarshalJSON(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		in   http.Content
+		in   delivery.Content
 		out  string
 		name string
 	}{{
 		name: "plain",
-		in: http.Content{
+		in: delivery.Content{
 			HTML:  nil,
 			Value: `Hello World`,
 		},
 		out: `{"content":["Hello World"]}`,
 	}, {
 		name: "html",
-		in: http.Content{
+		in: delivery.Content{
 			HTML:  testContent,
 			Value: "",
 		},
 		out: `{"content":[{"html":"\u003cb\u003eHello\u003c/b\u003e \u003ci\u003eWorld\u003c/i\u003e"}]}`,
 	}, {
 		name: "both",
-		in: http.Content{
+		in: delivery.Content{
 			HTML:  testContent,
 			Value: `Hello World`,
 		},
@@ -127,7 +127,7 @@ func TestContent_MarshalJSON(t *testing.T) {
 			t.Parallel()
 
 			out, err := json.Marshal(testRequest{
-				Content: []http.Content{tc.in},
+				Content: []delivery.Content{tc.in},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -146,22 +146,22 @@ func TestDelete_UnmarshalJSON(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		in   string
-		out  http.Delete
+		out  delivery.Delete
 	}{{
 		name: "values",
 		in:   `{"category":["indieweb"]}`,
-		out: http.Delete{
+		out: delivery.Delete{
 			Keys: nil,
-			Values: http.Properties{
+			Values: delivery.Properties{
 				Category: []string{"indieweb"},
 			},
 		},
 	}, {
 		name: "keys",
 		in:   `["category"]`,
-		out: http.Delete{
+		out: delivery.Delete{
 			Keys:   []string{"category"},
-			Values: http.Properties{},
+			Values: delivery.Properties{},
 		},
 	}} {
 		tc := tc
@@ -187,11 +187,11 @@ func TestFigure_UnmarshalJSON(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		in   string
-		out  http.Figure
+		out  delivery.Figure
 	}{{
 		name: "alt",
 		in:   `{"value":"https://photos.example.com/globe.gif","alt":"Spinning globe animation"}`,
-		out: http.Figure{
+		out: delivery.Figure{
 			Alt: "Spinning globe animation",
 			Value: &url.URL{
 				Scheme: "https",
@@ -202,7 +202,7 @@ func TestFigure_UnmarshalJSON(t *testing.T) {
 	}, {
 		name: "plain",
 		in:   `"https://photos.example.com/592829482876343254.jpg"`,
-		out: http.Figure{
+		out: delivery.Figure{
 			Alt: "",
 			Value: &url.URL{
 				Scheme: "https",
