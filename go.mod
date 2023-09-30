@@ -8,3 +8,5 @@ require (
 )
 
 require golang.org/x/net v0.15.0
+
+require github.com/caarlos0/env/v9 v9.0.0
