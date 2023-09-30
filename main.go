@@ -16,7 +16,7 @@ import (
 
 var (
 	config = new(domain.Config)
-	logger = log.New(os.Stdout, "Micropub	", log.LstdFlags)
+	logger = log.New(os.Stdout, "Micropub\t", log.LstdFlags)
 )
 
 func init() {
