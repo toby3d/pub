@@ -33,7 +33,8 @@ func main() {
 	mediaHandler := mediahttpdelivery.NewHandler(mediaUseCase, *config)
 
 	server := http.Server{
-		Addr: config.HTTP.Bind,
+		ErrorLog: logger,
+		Addr:     config.HTTP.Bind,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			head, _ := urlutil.ShiftPath(r.RequestURI)
 
