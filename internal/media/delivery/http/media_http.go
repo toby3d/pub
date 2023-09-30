@@ -117,8 +117,8 @@ func WriteError(w http.ResponseWriter, description string, status int) {
 		out.Error = "unauthorized"
 	}
 
-	_ = json.NewEncoder(w).Encode(out)
-
 	w.Header().Set(common.HeaderContentType, common.MIMEApplicationJSONCharsetUTF8)
 	w.WriteHeader(status)
+
+	_ = json.NewEncoder(w).Encode(out)
 }
