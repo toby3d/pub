@@ -20,7 +20,9 @@ var (
 )
 
 func init() {
-	if err := env.ParseWithOptions(config, env.Options{}); err != nil {
+	if err := env.ParseWithOptions(config, env.Options{
+		Prefix: "MICROPUB_",
+	}); err != nil {
 		logger.Fatal("cannot parse environment variables into config:", err)
 	}
 }
