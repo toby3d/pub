@@ -2,6 +2,7 @@ package entry
 
 import (
 	"context"
+	"errors"
 
 	"source.toby3d.me/toby3d/pub/internal/domain"
 )
@@ -16,4 +17,9 @@ type (
 		Update(ctx context.Context, path string, update UpdateFunc) (*domain.Entry, error)
 		Delete(ctx context.Context, path string) (bool, error)
 	}
+)
+
+var (
+	ErrExist    error = errors.New("this entry already exist")
+	ErrNotExist error = errors.New("this entry is not exist")
 )
