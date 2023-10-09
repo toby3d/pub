@@ -11,7 +11,7 @@ type (
 	UpdateFunc func(ctx context.Context, input *domain.Entry) (*domain.Entry, error)
 
 	Repository interface {
-		Create(ctx context.Context, path string, e domain.Entry) (*domain.Entry, error)
+		Create(ctx context.Context, path string, e domain.Entry) error
 		Get(ctx context.Context, path string) (*domain.Entry, error)
 		Fetch(ctx context.Context, path string) ([]domain.Entry, int, error)
 		Update(ctx context.Context, path string, update UpdateFunc) (*domain.Entry, error)
