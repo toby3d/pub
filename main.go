@@ -17,12 +17,16 @@ import (
 	"syscall"
 
 	"github.com/caarlos0/env/v9"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 
+	"source.toby3d.me/toby3d/pub/internal/common"
 	"source.toby3d.me/toby3d/pub/internal/domain"
 	mediahttpdelivery "source.toby3d.me/toby3d/pub/internal/media/delivery/http"
 	mediamemoryrepo "source.toby3d.me/toby3d/pub/internal/media/repository/memory"
 	mediaucase "source.toby3d.me/toby3d/pub/internal/media/usecase"
 	"source.toby3d.me/toby3d/pub/internal/urlutil"
+	"source.toby3d.me/toby3d/pub/web/template"
 )
 
 var (
@@ -50,6 +54,7 @@ func main() {
 	mediaUseCase := mediaucase.NewMediaUseCase(mediaRepo)
 	mediaHandler := mediahttpdelivery.NewHandler(mediaUseCase, *config)
 
+	matcher := language.NewMatcher(message.DefaultCatalog.Languages())
 	server := http.Server{
 		ErrorLog: logger,
 		Addr:     config.HTTP.Bind,
@@ -58,7 +63,14 @@ func main() {
 
 			switch head {
 			default:
-				http.NotFound(w, r)
+				tags, _, err := language.ParseAcceptLanguage(r.Header.Get(common.HeaderAcceptLanguage))
+				if err != nil {
+					tags = append(tags, language.English)
+				}
+
+				tag, _, _ := matcher.Match(tags...)
+
+				template.WriteTemplate(w, template.NewPageEditor(template.NewBaseOf(tag)))
 			case "media":
 				mediaHandler.ServeHTTP(w, r)
 			}
