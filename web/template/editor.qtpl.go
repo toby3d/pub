@@ -148,7 +148,7 @@ func (pe *PageEditor) streambody(qw422016 *qt422016.Writer) {
     <label>
       `)
 //line web/template/editor.qtpl:59
-	pe.streamt(qw422016, `Published at`)
+	pe.streamt(qw422016, `Published exactly at`)
 //line web/template/editor.qtpl:59
 	qw422016.N().S(`
       <input type="datetime-local"
@@ -167,8 +167,22 @@ func (pe *PageEditor) streambody(qw422016 *qt422016.Writer) {
     <label>
       `)
 //line web/template/editor.qtpl:70
-	pe.streamt(qw422016, `Tags`)
+	pe.streamt(qw422016, `Published after`)
 //line web/template/editor.qtpl:70
+	qw422016.N().S(`
+      <input type="text"
+             name="published"
+             value=""
+             pattern="[+-]?\d+(ns|us|µs|ms|s|m|h)" />
+    </label>
+  </div>
+
+  <div>
+    <label>
+      `)
+//line web/template/editor.qtpl:80
+	pe.streamt(qw422016, `Tags`)
+//line web/template/editor.qtpl:80
 	qw422016.N().S(`
       <input type="text"
              name="category"
@@ -180,39 +194,39 @@ func (pe *PageEditor) streambody(qw422016 *qt422016.Writer) {
   <div>
     <button type="submit">
       `)
-//line web/template/editor.qtpl:80
+//line web/template/editor.qtpl:90
 	pe.streamt(qw422016, `Send`)
-//line web/template/editor.qtpl:80
+//line web/template/editor.qtpl:90
 	qw422016.N().S(`
     </button>
   </div>
 </form>
 `)
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 }
 
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 func (pe *PageEditor) writebody(qq422016 qtio422016.Writer) {
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 	pe.streambody(qw422016)
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 	qt422016.ReleaseWriter(qw422016)
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 }
 
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 func (pe *PageEditor) body() string {
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 	qb422016 := qt422016.AcquireByteBuffer()
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 	pe.writebody(qb422016)
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 	qs422016 := string(qb422016.B)
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 	qt422016.ReleaseByteBuffer(qb422016)
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 	return qs422016
-//line web/template/editor.qtpl:84
+//line web/template/editor.qtpl:94
 }

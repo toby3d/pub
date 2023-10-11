@@ -39,26 +39,30 @@ func init() {
 }
 
 var messageKeyToIndex = map[string]int{
-	"Content":      1,
-	"Name":         0,
-	"Published at": 2,
-	"Send":         4,
-	"Tags":         3,
+	"Content":              1,
+	"Name":                 0,
+	"Published after":      3,
+	"Published exactly at": 2,
+	"Send":                 5,
+	"Tags":                 4,
 }
 
-var enIndex = []uint32{ // 6 elements
-	0x00000000, 0x00000005, 0x0000000d, 0x0000001a,
-	0x0000001f, 0x00000024,
-} // Size: 48 bytes
+var enIndex = []uint32{ // 7 elements
+	0x00000000, 0x00000005, 0x0000000d, 0x00000022,
+	0x00000032, 0x00000037, 0x0000003c,
+} // Size: 52 bytes
 
-const enData string = "\x02Name\x02Content\x02Published at\x02Tags\x02Send"
+const enData string = "" + // Size: 60 bytes
+	"\x02Name\x02Content\x02Published exactly at\x02Published after\x02Tags" +
+	"\x02Send"
 
-var ruIndex = []uint32{ // 6 elements
-	0x00000000, 0x00000011, 0x00000026, 0x00000044,
-	0x0000004d, 0x00000060,
-} // Size: 48 bytes
+var ruIndex = []uint32{ // 7 elements
+	0x00000000, 0x00000011, 0x00000026, 0x0000004d,
+	0x00000071, 0x0000007a, 0x0000008d,
+} // Size: 52 bytes
 
-const ruData string = "" + // Size: 96 bytes
-	"\x02Название\x02Содержимое\x02Дата публикации\x02Тэги\x02Отправить"
+const ruData string = "" + // Size: 141 bytes
+	"\x02Название\x02Содержимое\x02Опубликовать точно в\x02Опубликовать через" +
+	"\x02Тэги\x02Отправить"
 
-	// Total table size 228 bytes (0KiB); checksum: 36937515
+	// Total table size 305 bytes (0KiB); checksum: 8DEE5E28

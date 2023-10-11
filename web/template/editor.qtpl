@@ -56,12 +56,22 @@ Editor — Micropub
 
   <div>
     <label>
-      {%= pe.t(`Published at`) %}
+      {%= pe.t(`Published exactly at`) %}
       <input type="datetime-local"
              name="published"
              min="1970-01-01T00:00:00"
              value="{%s pe.now.Format(`2006-01-02T15:04:05`) %}"
              step="1" />
+    </label>
+  </div>
+
+  <div>
+    <label>
+      {%= pe.t(`Published after`) %}
+      <input type="text"
+             name="published"
+             value=""
+             pattern="[+-]?\d+(ns|us|µs|ms|s|m|h)" />
     </label>
   </div>
 

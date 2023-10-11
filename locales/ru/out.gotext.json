@@ -12,9 +12,14 @@
             "translation": "Содержимое"
         },
         {
-            "id": "Published at",
-            "message": "Published at",
-            "translation": "Дата публикации"
+            "id": "Published exactly at",
+            "message": "Published exactly at",
+            "translation": "Опубликовать точно в"
+        },
+        {
+            "id": "Published after",
+            "message": "Published after",
+            "translation": "Опубликовать через"
         },
         {
             "id": "Tags",

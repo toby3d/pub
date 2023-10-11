@@ -16,9 +16,16 @@
             "fuzzy": true
         },
         {
-            "id": "Published at",
-            "message": "Published at",
-            "translation": "Published at",
+            "id": "Published exactly at",
+            "message": "Published exactly at",
+            "translation": "Published exactly at",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Published after",
+            "message": "Published after",
+            "translation": "Published after",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
