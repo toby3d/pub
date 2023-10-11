@@ -1,3 +1,7 @@
+//go:generate go install github.com/valyala/quicktemplate/qtc@master
+//go:generate qtc -dir=web/template
+//go:generate go install golang.org/x/text/cmd/gotext@master
+//go:generate gotext -srclang=en update -lang=en,ru -out=locales_gen.go
 package main
 
 import (
