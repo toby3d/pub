@@ -1,0 +1,77 @@
+{% import (
+  "golang.org/x/text/language"
+  "golang.org/x/text/message"
+) %}
+
+{% interface Page {
+  body()
+  dir()
+  head()
+  lang()
+  title()
+  t(format message.Reference, a ...any)
+} %}
+
+{% code
+type BaseOf struct {
+  language language.Tag
+  printer *message.Printer
+}
+
+func NewBaseOf(lang language.Tag) *BaseOf {
+  return &BaseOf{
+    language: lang,
+    printer: message.NewPrinter(lang),
+  }
+}
+%}
+
+{% func (b *BaseOf) lang() %}
+{%s b.language.String() %}
+{% endfunc %}
+
+{% func (b *BaseOf) dir() %}
+{% for _, tag := range []language.Tag{
+  language.Arabic,
+  language.Hebrew,
+  language.Persian,
+  language.Urdu,
+} %}
+{% if b.language != tag %}
+{% continue %}
+{% endif %}
+rtl
+{% return %}
+{% endfor %}
+ltr
+{% endfunc %}
+
+{% func (b *BaseOf) title() %}
+Micropub
+{% endfunc %}
+
+{% func (b *BaseOf) head() %}{% endfunc %}
+{% func (b *BaseOf) body() %}{% endfunc %}
+
+{% func (b *BaseOf) t(format message.Reference, a ...any) %}
+{%s b.printer.Sprintf(format, a...) %}
+{% endfunc %}
+
+{% func Template(p Page) %}
+<!DOCTYPE html>
+<html lang="{%= p.lang() %}"
+      dir="{%= p.dir() %}">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+    {%= p.head() %}
+    <title>{%= p.title() %}</title>
+  </head>
+
+  <body>
+    {%= p.body() %}
+  </body>
+</html>
+{% endfunc %}

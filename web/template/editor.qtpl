@@ -1,0 +1,84 @@
+{% import (
+  "time"
+) %}
+
+{% code
+type PageEditor struct {
+  *BaseOf
+  now time.Time
+}
+
+func NewPageEditor(base *BaseOf) *PageEditor {
+  return &PageEditor{
+    BaseOf: base,
+    now: time.Now().UTC(),
+  }
+}
+%}
+
+{% func (pe *PageEditor) title() %}
+Editor — Micropub
+{% endfunc %}
+
+{% func (pe *PageEditor) head() %}{% endfunc %}
+
+{% func (pe *PageEditor) body() %}
+<form method="post"
+      action="/api"
+      target="_self"
+      accept-charset="utf-8"
+      enctype="application/x-www-form-urlencoded"
+      autocomplete="off">
+
+  <input type="hidden"
+         name="h"
+         value="entry" />
+
+  <div>
+    <label>
+      {%= pe.t(`Name`) %}
+      <input type="text"
+             name="name"
+             placeholder="Hello, World!" />
+    </label>
+  </div>
+
+  <div>
+    <label>
+      {%= pe.t(`Content`) %}
+      <textarea name="content"
+                cols="30"
+                rows="10"
+                placeholder="Lorem ipsum dolor sit amet...">
+  </textarea>
+    </label>
+  </div>
+
+  <div>
+    <label>
+      {%= pe.t(`Published at`) %}
+      <input type="datetime-local"
+             name="published"
+             min="1970-01-01T00:00:00"
+             value="{%s pe.now.Format(`2006-01-02T15:04:05`) %}"
+             step="1" />
+    </label>
+  </div>
+
+  <div>
+    <label>
+      {%= pe.t(`Tags`) %}
+      <input type="text"
+             name="category"
+             pattern="[a-zA-Z0-9-, ]"
+             placeholder="note, 100DaysOfIndieWeb...">
+    </label>
+  </div>
+
+  <div>
+    <button type="submit">
+      {%= pe.t(`Send`) %}
+    </button>
+  </div>
+</form>
+{% endfunc %}
