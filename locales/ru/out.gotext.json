@@ -1,0 +1,30 @@
+{
+    "language": "ru",
+    "messages": [
+        {
+            "id": "Name",
+            "message": "Name",
+            "translation": "Название"
+        },
+        {
+            "id": "Content",
+            "message": "Content",
+            "translation": "Содержимое"
+        },
+        {
+            "id": "Published at",
+            "message": "Published at",
+            "translation": "Дата публикации"
+        },
+        {
+            "id": "Tags",
+            "message": "Tags",
+            "translation": "Тэги"
+        },
+        {
+            "id": "Send",
+            "message": "Send",
+            "translation": "Отправить"
+        }
+    ]
+}

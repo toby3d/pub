@@ -1,0 +1,40 @@
+{
+    "language": "en",
+    "messages": [
+        {
+            "id": "Name",
+            "message": "Name",
+            "translation": "Name",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Content",
+            "message": "Content",
+            "translation": "Content",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Published at",
+            "message": "Published at",
+            "translation": "Published at",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Tags",
+            "message": "Tags",
+            "translation": "Tags",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Send",
+            "message": "Send",
+            "translation": "Send",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        }
+    ]
+}
