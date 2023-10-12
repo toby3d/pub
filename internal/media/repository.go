@@ -107,26 +107,26 @@ func NewSpyMediaRepository(subRepo Repository) *spyRepository {
 	}
 }
 
-func (repo *spyRepository) Create(_ context.Context, _ string, _ domain.File) error {
+func (repo *spyRepository) Create(ctx context.Context, path string, f domain.File) error {
 	repo.Creates++
 
-	return repo.subRepository.Create(context.TODO(), "", domain.File{})
+	return repo.subRepository.Create(ctx, path, f)
 }
 
-func (repo *spyRepository) Get(_ context.Context, _ string) (*domain.File, error) {
+func (repo *spyRepository) Get(ctx context.Context, path string) (*domain.File, error) {
 	repo.Gets++
 
-	return repo.subRepository.Get(context.TODO(), "")
+	return repo.subRepository.Get(ctx, path)
 }
 
-func (repo *spyRepository) Update(_ context.Context, _ string, _ UpdateFunc) error {
+func (repo *spyRepository) Update(ctx context.Context, path string, update UpdateFunc) error {
 	repo.Updates++
 
-	return repo.subRepository.Update(context.TODO(), "", nil)
+	return repo.subRepository.Update(ctx, path, update)
 }
 
-func (repo *spyRepository) Delete(_ context.Context, _ string) error {
+func (repo *spyRepository) Delete(ctx context.Context, path string) error {
 	repo.Deletes++
 
-	return repo.subRepository.Delete(context.TODO(), "")
+	return repo.subRepository.Delete(ctx, path)
 }

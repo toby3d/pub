@@ -73,14 +73,18 @@ func (ucase *entryUseCase) Undelete(ctx context.Context, u *url.URL) (*domain.En
 }
 
 // Update implements entry.UseCase.
-func (ucase *entryUseCase) Update(ctx context.Context, u *url.URL, e domain.Entry) (*domain.Entry, error) {
+func (ucase *entryUseCase) Update(ctx context.Context, u *url.URL, opts entry.UpdateOptions) (*domain.Entry, error) {
 	result, err := ucase.entries.Update(ctx, u.RequestURI(), func(_ context.Context, e *domain.Entry) (
 		*domain.Entry, error,
 	) {
 		e.DeletedAt = time.Time{}
 		e.UpdatedAt = time.Now().UTC()
 
-		return nil, nil
+		// TODO(toby3d): add
+		// TODO(toby3d): update
+		// TODO(toby3d): delete
+
+		return e, nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cannot update entry: %w", err)
