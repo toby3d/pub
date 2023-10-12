@@ -16,6 +16,16 @@ type entryUseCase struct {
 
 // Create implements entry.UseCase.
 func (ucase *entryUseCase) Create(ctx context.Context, e domain.Entry) (*domain.Entry, error) {
+	now := time.Now().UTC()
+
+	if e.CreatedAt.IsZero() {
+		e.CreatedAt = now
+	}
+
+	if e.UpdatedAt.IsZero() {
+		e.UpdatedAt = now
+	}
+
 	if err := ucase.entries.Create(ctx, e.URL.RequestURI(), e); err != nil {
 		return nil, fmt.Errorf("cannot create entry: %w", err)
 	}
@@ -37,7 +47,7 @@ func (ucase *entryUseCase) Delete(ctx context.Context, u *url.URL) (bool, error)
 		e.DeletedAt = now
 		e.UpdatedAt = now
 
-		return nil, nil
+		return e, nil
 	}); err != nil {
 		return false, fmt.Errorf("cannot undelete entry: %w", err)
 	}
