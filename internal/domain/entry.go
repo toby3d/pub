@@ -13,7 +13,7 @@ type Entry struct {
 	DeletedAt   time.Time
 	Title       string    // p-name
 	Description string    // p-summary
-	Content     []byte    // e-content
+	Content     Content   // e-content
 	PublishedAt time.Time // dt-published
 	UpdatedAt   time.Time // dt-updated
 	// TODO(toby3d): Author string // p-author
@@ -59,11 +59,11 @@ func TestEntry(tb testing.TB) *Entry {
 		Title: "Lorem ipsum",
 		Description: "Ut enim ad minim veniam, quis nostrud exercitation " +
 			"ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-		Content: []byte("Duis aute irure dolor in reprehenderit in " +
+		Content: Content{Text: "Duis aute irure dolor in reprehenderit in " +
 			"voluptate velit esse cillum dolore eu fugiat nulla " +
 			"pariatur. Excepteur sint occaecat cupidatat non proident," +
 			" sut in culpa qui officia deserunt mollit anim id est " +
-			"laborum."),
+			"laborum."},
 		Tags: []string{"lorem", "ipsum", "dor"},
 	}
 }
