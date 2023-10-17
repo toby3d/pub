@@ -15,22 +15,22 @@ type Error struct {
 	Code        int           `json:"error"`
 }
 
-func (err Error) Error() string {
-	return fmt.Sprint(err)
+func (e Error) Error() string {
+	return fmt.Sprint(e)
 }
 
-func (err Error) Format(f fmt.State, r rune) {
-	xerrors.FormatError(err, f, r)
+func (e Error) Format(f fmt.State, r rune) {
+	xerrors.FormatError(e, f, r)
 }
 
-func (err Error) FormatError(p xerrors.Printer) error {
-	p.Printf("%d: %s", err.Code, err.Description)
+func (e Error) FormatError(p xerrors.Printer) error {
+	p.Printf("%d: %s", e.Code, e.Description)
 
 	if !p.Detail() {
-		return err
+		return e
 	}
 
-	err.Frame.Format(p)
+	e.Frame.Format(p)
 
 	return nil
 }
