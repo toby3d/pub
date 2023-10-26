@@ -327,7 +327,12 @@ func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	req.populate(in)
 
-	out, err := h.entries.Update(r.Context(), req.URL.URL, *in)
+	out, err := h.entries.Update(r.Context(), req.URL.URL, entry.UpdateOptions{
+		// TODO(toby3d)
+		// Add:     req.Add,
+		// Replace: req.Replace,
+		// Delete:  req.Delete,
+	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
@@ -481,7 +486,8 @@ func (r *RequestCreate) bind(req *http.Request) error {
 
 func (r *RequestCreate) populate(dst *domain.Entry) {
 	if len(r.Properties.Content) > 0 {
-		dst.Content = []byte(r.Properties.Content[0].Value)
+		dst.Content.HTML = r.Properties.Content[0].HTML
+		dst.Content.Text = r.Properties.Content[0].Value
 	}
 
 	if len(r.Properties.Summary) > 0 {
@@ -698,12 +704,13 @@ func NewResponseSource(src *domain.Entry, properties ...string) *ResponseSource 
 				})
 			}
 		case "content":
-			if len(src.Content) == 0 {
+			if src.Content.Text == "" && src.Content.HTML == nil {
 				continue
 			}
 
 			out.Properties.Content = append(out.Properties.Content, Content{
-				Value: string(src.Content),
+				Value: src.Content.Text,
+				HTML:  src.Content.HTML,
 			})
 		case "category":
 			out.Properties.Category = append(out.Properties.Category, src.Tags...)
@@ -735,7 +742,8 @@ func (p Properties) CopyTo(dst *domain.Entry) {
 	}
 
 	if len(p.Content) > 0 {
-		dst.Content = []byte(p.Content[0].Value)
+		dst.Content.HTML = p.Content[0].HTML
+		dst.Content.Text = p.Content[0].Value
 	}
 
 	if len(p.Name) > 0 {
@@ -796,7 +804,7 @@ func (d Delete) CopyTo(dst *domain.Entry) {
 		case "category":
 			dst.Tags = make([]string, 0)
 		case "content":
-			dst.Content = make([]byte, 0)
+			dst.Content = domain.Content{}
 		case "name":
 			dst.Title = ""
 		case "photo":
